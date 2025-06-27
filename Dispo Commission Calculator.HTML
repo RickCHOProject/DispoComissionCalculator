@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Commission Calculator</title>
+    <!-- Chosen Palette: Warm Neutrals with Muted Teal Accent -->
+    <!-- Application Structure Plan: The application is designed as an interactive dashboard centered around a primary "what-if" tool. The main structure is a two-column layout. The left column contains the core calculator: a revenue input slider and a dynamic results panel that breaks down the earnings in real-time. This structure was chosen because the primary user goal is to understand the direct financial impact of sales performance. The right column features a horizontal bar chart that visually represents the commission tiers, reinforcing the logic of the calculator and making the jumps in commission rates easy to see. A final, full-width section at the bottom provides the official terms for context. This user flow—from interactive tool to visual reinforcement to detailed terms—creates a logical and intuitive path for understanding the complete compensation structure. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Full commission structure (base pay, tiers, revenue). Goal: Allow user to calculate potential earnings. Viz/Presentation: Interactive slider for revenue input, dynamic text display for results (Base Pay, Commission Rate/Amount, Total Earnings). Interaction: User drags slider; JS recalculates and updates all values instantly. Justification: This is the most direct and effective way to turn a static document into a personalized financial planning tool. Library/Method: Vanilla JS and HTML DOM manipulation.
+        - Report Info: Commission Tiers. Goal: Visually reinforce the different performance levels and rewards. Viz/Presentation: Horizontal Bar Chart showing the commission percentage for each revenue bracket. Interaction: The chart bar corresponding to the user's selected revenue is highlighted. Justification: A chart provides a much faster visual understanding of the tier structure than re-reading a table, complementing the calculator. Library/Method: Chart.js (Canvas).
+        - Report Info: Terms. Goal: Provide necessary context and official rules. Viz/Presentation: Clean, readable text list at the bottom. Interaction: None. Justification: This is reference information that should be accessible but not clutter the main interactive tool. Library/Method: HTML and Tailwind CSS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #2c7a7b;
+            cursor: pointer;
+            margin-top: -8px; 
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #2c7a7b;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">Disposition Rep Commission Calculator</h1>
+            <p class="mt-2 text-lg text-slate-600">Interactively explore your potential earnings. Effective July 1.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+                <h2 class="text-2xl font-bold mb-6 text-slate-900">Your Performance</h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label for="revenueSlider" class="block text-sm font-medium text-slate-600 mb-2">Monthly Revenue Closed</label>
+                        <input id="revenueSlider" type="range" min="0" max="250000" step="1000" value="75000" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="text-center mt-2 text-2xl font-bold text-teal-700" id="revenueValueDisplay">$75,000</div>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-200 space-y-4">
+                         <h3 class="text-xl font-bold text-slate-900">Earnings Breakdown</h3>
+                        <div class="flex justify-between items-center bg-slate-100 p-3 rounded-lg">
+                            <span class="font-medium text-slate-600">Base Pay</span>
+                            <span id="basePayDisplay" class="font-bold text-lg text-slate-800">$2,000.00</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-100 p-3 rounded-lg">
+                            <span class="font-medium text-slate-600">Commission Rate</span>
+                            <span id="commissionRateDisplay" class="font-bold text-lg text-teal-600">3.5%</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-slate-100 p-3 rounded-lg">
+                            <span class="font-medium text-slate-600">Commission Earned</span>
+                            <span id="commissionEarnedDisplay" class="font-bold text-lg text-slate-800">$2,625.00</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-teal-600 text-white p-4 rounded-lg mt-4">
+                            <span class="text-lg font-bold">Total Monthly Earnings</span>
+                            <span id="totalEarningsDisplay" class="font-bold text-2xl">$4,625.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 bg-white p-6 rounded-2xl shadow-lg border border-slate-200 flex flex-col">
+                 <h2 class="text-2xl font-bold mb-2 text-slate-900">Commission Tiers</h2>
+                 <p class="text-slate-600 mb-6">This chart shows the commission percentage applied at each revenue level. Your current performance tier is highlighted.</p>
+                 <div class="chart-container flex-grow">
+                    <canvas id="commissionChart"></canvas>
+                </div>
+            </div>
+
+        </main>
+
+        <section class="mt-12 bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+            <h2 class="text-2xl font-bold mb-4 text-slate-900">Official Terms</h2>
+            <ul class="list-disc list-inside space-y-2 text-slate-600">
+                <li>Revenue is based on total gross assignment fees from deals closed and funded during the calendar month.</li>
+                <li>Commissions are paid on qualifying revenue for that month only.</li>
+                <li>This structure is designed to reward high performance while supporting company profitability.</li>
+            </ul>
+        </section>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const commissionTiers = [
+                { threshold: 150000, rate: 0.06, label: '$150k+' },
+                { threshold: 100000, rate: 0.05, label: '$100k - $149.9k' },
+                { threshold: 0, rate: 0.035, label: 'Under $100k' }
+            ];
+            const basePay = 2000;
+
+            const revenueSlider = document.getElementById('revenueSlider');
+            const revenueValueDisplay = document.getElementById('revenueValueDisplay');
+            const basePayDisplay = document.getElementById('basePayDisplay');
+            const commissionRateDisplay = document.getElementById('commissionRateDisplay');
+            const commissionEarnedDisplay = document.getElementById('commissionEarnedDisplay');
+            const totalEarningsDisplay = document.getElementById('totalEarningsDisplay');
+            
+            const formatCurrency = (value) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+            const chartCanvas = document.getElementById('commissionChart');
+            const chartLabels = commissionTiers.map(t => t.label).reverse();
+            const chartData = commissionTiers.map(t => t.rate * 100).reverse();
+            const defaultColors = ['#e2e8f0', '#e2e8f0', '#e2e8f0'];
+            const highlightColor = '#2c7a7b';
+
+            const commissionChart = new Chart(chartCanvas, {
+                type: 'bar',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Commission Rate (%)',
+                        data: chartData,
+                        backgroundColor: defaultColors,
+                        borderColor: '#cbd5e1',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.raw.toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Commission Rate (%)'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                             grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            function updateCalculator() {
+                const revenue = parseFloat(revenueSlider.value);
+                
+                let currentTier = commissionTiers.find(tier => revenue >= tier.threshold);
+                
+                const commissionEarned = revenue * currentTier.rate;
+                const totalEarnings = basePay + commissionEarned;
+
+                revenueValueDisplay.textContent = formatCurrency(revenue);
+                basePayDisplay.textContent = formatCurrency(basePay);
+                commissionRateDisplay.textContent = `${(currentTier.rate * 100).toFixed(1)}%`;
+                commissionEarnedDisplay.textContent = formatCurrency(commissionEarned);
+                totalEarningsDisplay.textContent = formatCurrency(totalEarnings);
+                
+                updateChartHighlight(currentTier);
+            }
+            
+            function updateChartHighlight(activeTier) {
+                const activeIndex = commissionTiers.length - 1 - commissionTiers.indexOf(activeTier);
+                const backgroundColors = [...defaultColors];
+                backgroundColors[activeIndex] = highlightColor;
+                commissionChart.data.datasets[0].backgroundColor = backgroundColors;
+                commissionChart.update();
+            }
+
+            revenueSlider.addEventListener('input', updateCalculator);
+            
+            updateCalculator();
+        });
+    </script>
+</body>
+</html>
